@@ -3,6 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const validateRequest = require('../middleware/validate-request');
 const authorize = require('../middleware/authorize');
+router.use(authorize(), checkAccountStatus);
 const Role = require('../helpers/role');
 const accountService = require('./account.service');
 
@@ -23,6 +24,22 @@ router.delete('/:id', authorize(), deleteAccount);
 
 module.exports = router;
 
+function checkAccountStatus(req, res, next) {
+    // Skip status check for these routes
+    if (req.path === '/authenticate' || req.path === '/register') {
+        return next();
+    }
+
+    accountService.getById(req.user.id)
+        .then(account => {
+            if (account.status !== 'Active') {
+                return res.status(401).json({ message: 'Account is inactive' });
+            }
+            next();
+        })
+        .catch(next);
+}
+
 function authenticateSchema(req, res, next) {
     const schema = Joi.object({
         email: Joi.string().required(),
@@ -39,7 +56,8 @@ function authenticate(req, res, next) {
             setTokenCookie(res, refreshToken);
             res.json({
                 ...account,
-                id: account.id 
+                id: account.id,
+                status: account.status
             });
         })
         .catch(next);
@@ -262,6 +280,7 @@ function updateSchema(req, res, next) {
     // only admins can update role
     if (req.user.role === Role.Admin) {
         schemaRules.role = Joi.string().valid(Role.Admin, Role.User).empty('');
+        schemaRules.status = Joi.string().valid('Active', 'Inactive').empty('');
     }
 
     const schema = Joi.object(schemaRules).with('password', 'confirmPassword');
