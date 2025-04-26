@@ -15,6 +15,7 @@
     "yamljs": "^0.3.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "start": "node ./server.js",
+    "start:dev": "nodemon ./server.js"
   }
 }
