@@ -114,10 +114,8 @@ async function register(params, origin) {
     // Create new account with user's registration data
     const account = new db.Account(params);
     
-    // Special rule: First user becomes admin, others get user role
-    // This ensures the system always has at least one admin account
-    const isFirstAccount = (await db.Account.count()) === 0;
-    account.role = isFirstAccount ? Role.Admin : Role.User;
+    // Automatically assign the User role to new accounts
+    account.role = Role.User;
     
     // Generate a secure random token for email verification
     account.verificationToken = randomTokenString();
