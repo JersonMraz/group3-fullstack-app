@@ -8,5 +8,6 @@ export class DetailsComponent {
 
     constructor(private accountService: AccountService) {
         this.account = this.accountService.accountValue;
+        this.account.isActive = this.account.isActive ? 'Active' : 'InActive';
     }
 }
