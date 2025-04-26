@@ -31,11 +31,11 @@ async function authenticate({ email, password, ipAddress }) {
     // 1. Account exists 
     // 2. Account is verified 
     // 3. Password matches the hash
+    // 4. Account is active
     // If any check fails, throw an error
-    if (!account || !account.isVerified || !(await bcrypt.compare(password, account.passwordHash))) {
+    if (!account || !account.isVerified || !(await bcrypt.compare(password, account.passwordHash)) || account.status !== 'Active') {
         throw 'Email or password is incorrect';
     }
-
     // If we get here, the login is successful!
     
     // 1. Create a short-lived JWT token (typically expires in 15-30 mins)
@@ -61,6 +61,10 @@ async function refreshToken({ token, ipAddress }) {
     
     // 2. Get the account associated with this refresh token
     const account = await refreshToken.getAccount();
+
+    if (account.status !== 'Active') {
+        throw 'Account is inactive';
+    }
 
     // Refresh token rotation - security best practice:
     // a) Create a brand new refresh token
@@ -120,10 +124,12 @@ async function register(params, origin) {
     // Generate a secure random token for email verification
     account.verificationToken = randomTokenString();
     
+
+
     // Important security step: Hash the password before storing
     // Never store passwords in plain text!
     account.passwordHash = await hash(params.password);
-    
+    account.status = 'Active'; // Set new accounts to Active by default
     // Save the new account to the database
     await account.save();
     
@@ -213,6 +219,7 @@ async function createAccount(params) {
     // hash password
     account.passwordHash = await hash(params.password);
     // save account
+    account.status = params.status || 'Active';
     await account.save();
     return basicDetails(account);
 }
@@ -277,8 +284,8 @@ function randomTokenString() {
 }
 
 function basicDetails(account) {
-    const { id, title, firstName, lastName, email, role, created, updated, isVerified } = account;
-    return { id, title, firstName, lastName, email, role, created, updated, isVerified };
+    const { id, title, firstName, lastName, email, role, created, updated, isVerified, status } = account;
+    return { id, title, firstName, lastName, email, role, created, updated, isVerified, status };
 }
 
 function generateJwtToken(account) {
